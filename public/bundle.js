@@ -22446,6 +22446,8 @@ var _footer2 = _interopRequireDefault(_footer);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
+function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } }
+
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
 function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
@@ -22462,12 +22464,13 @@ var Root = function (_Component) {
 
         _this.state = {
             searchActive: false,
-            articles: ['there was a dog', 'there was a cat', 'there was a fish'],
+            articles: [],
             savedArticles: []
         };
         _this.submitSearch = _this.submitSearch.bind(_this);
         _this.activateSearch = _this.activateSearch.bind(_this);
         _this.saveArticle = _this.saveArticle.bind(_this);
+        _this.deleteSavedArticle = _this.deleteSavedArticle.bind(_this);
         return _this;
     }
 
@@ -22475,22 +22478,42 @@ var Root = function (_Component) {
         key: 'componentDidMount',
         value: function componentDidMount() {
             //database call
+            fetch('/saved').then(function (data) {
+                return data.json();
+            }).then(function (data) {
+                this.setState({ savedArticles: this.state.savedArticles.concat(data) });
+                console.log(this.state.savedArticles);
+            }.bind(this));
+
+            /* 
+                axios.get('/saved', function(data) {
+                    this.setState({savedArticles: this.state.savedArticles.concat(data)})
+                })
+            */
         }
     }, {
         key: 'submitSearch',
         value: function submitSearch(event) {
             event.preventDefault();
+            this.setState({ searchActive: false });
+            var url = new URL('https://api.nytimes.com/svc/search/v2/articlesearch.json');
             var form = event.target;
             var formData = new FormData(form);
+            url.searchParams.append('api-key', '87578ffc554043d1a0deb92ba48818f1');
             var _iteratorNormalCompletion = true;
             var _didIteratorError = false;
             var _iteratorError = undefined;
 
             try {
                 for (var _iterator = formData.entries()[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
+                    var _url$searchParams;
+
                     var entry = _step.value;
 
-                    console.log(entry);
+                    if (entry[0].includes('date')) {
+                        url.searchParams.append(entry[0], entry[1] + '0101');
+                    }
+                    (_url$searchParams = url.searchParams).append.apply(_url$searchParams, _toConsumableArray(entry));
                 }
             } catch (err) {
                 _didIteratorError = true;
@@ -22507,7 +22530,19 @@ var Root = function (_Component) {
                 }
             }
 
-            this.setState({ searchActive: false });
+            console.log(url.toString());
+            fetch(url).then(function (data) {
+                return data.json();
+            }).then(function (data) {
+                var newState = data.response.docs.map(function (article) {
+                    return {
+                        title: article.headline.main,
+                        url: article.web_url,
+                        date: article.pub_date
+                    };
+                });
+                this.setState({ articles: newState });
+            }.bind(this));
         }
     }, {
         key: 'activateSearch',
@@ -22516,8 +22551,58 @@ var Root = function (_Component) {
         }
     }, {
         key: 'saveArticle',
-        value: function saveArticle() {
+        value: function saveArticle(article) {
+            return function (event) {
+                event.preventDefault();
+                var header = new Headers();
+                header.append('Content-Type', 'application/json');
+                fetch('/save', {
+                    headers: header,
+                    method: 'post',
+                    body: JSON.stringify(article)
+                }).then(function (res) {
+                    return res.json();
+                }).then(function (res) {
+                    if (res.failed) {
+                        console.log(res);
+                    } else {
+                        console.log(res);
+                        this.setState({
+                            savedArticles: this.state.savedArticles.concat(res),
+                            articles: this.state.articles.filter(function (x) {
+                                return x.title != article.title;
+                            })
+                        });
+                    }
+                }.bind(this));
+            }.bind(this);
             //database call
+        }
+    }, {
+        key: 'deleteSavedArticle',
+        value: function deleteSavedArticle(id) {
+            return function (event) {
+                event.preventDefault();
+                var newState = this.state.savedArticles.filter(function (article) {
+                    return article._id != id;
+                });
+                console.log(newState.length);
+                var header = new Headers();
+                header.append('Content-Type', 'application/json');
+                fetch('/delete', {
+                    method: 'post',
+                    body: JSON.stringify({ _id: id }),
+                    headers: header
+                }).then(function (x) {
+                    return x.json();
+                }).then(function (res) {
+                    if (res.deleted) {
+                        this.setState({ savedArticles: newState });
+                    } else {
+                        console.log(res);
+                    }
+                }.bind(this));
+            }.bind(this);
         }
     }, {
         key: 'render',
@@ -22538,7 +22623,10 @@ var Root = function (_Component) {
                     submitSearch: this.submitSearch,
                     activateSearch: this.activateSearch,
                     searchActive: this.state.searchActive,
-                    articles: this.state.articles
+                    savedArticles: this.state.savedArticles,
+                    articles: this.state.articles,
+                    deleteSavedArticle: this.deleteSavedArticle,
+                    saveArticle: this.saveArticle
                 }),
                 _react2.default.createElement(_footer2.default, null)
             );
@@ -22621,6 +22709,10 @@ var _results = __webpack_require__(188);
 
 var _results2 = _interopRequireDefault(_results);
 
+var _saved = __webpack_require__(190);
+
+var _saved2 = _interopRequireDefault(_saved);
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 function Body(props) {
@@ -22641,7 +22733,14 @@ function Body(props) {
             searchActive: props.searchActive,
             activateSearch: props.activateSearch
         }),
-        _react2.default.createElement(_results2.default, { articles: props.articles })
+        _react2.default.createElement(_results2.default, {
+            articles: props.articles,
+            saveArticle: props.saveArticle
+        }),
+        _react2.default.createElement(_saved2.default, {
+            savedArticles: props.savedArticles,
+            deleteSavedArticle: props.deleteSavedArticle
+        })
     );
 }
 
@@ -22667,17 +22766,21 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 function Search(props) {
     var style = {
         container: {
+            display: 'grid',
+            gridTemplateColumns: '1fr',
+            gridTemplateRows: '1fr 7fr',
+            border: '2px solid black'
+        },
+        title: {
             display: 'flex',
             flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            border: '2px solid black'
+            alignItems: 'center'
         },
         form: {
             display: 'flex',
             flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'space-between'
+            justifyContent: 'space-around',
+            alignItems: 'center'
         }
     };
     if (!props.searchActive) {
@@ -22688,19 +22791,19 @@ function Search(props) {
                 'label',
                 null,
                 'Topic',
-                _react2.default.createElement('input', { onFocus: props.activateSearch, type: 'text', name: 'topic', value: '' })
+                _react2.default.createElement('input', { onFocus: props.activateSearch, type: 'text', value: '' })
             ),
             _react2.default.createElement(
                 'label',
                 null,
                 'Start Year',
-                _react2.default.createElement('input', { onFocus: props.activateSearch, type: 'text', name: 'startYear', value: '' })
+                _react2.default.createElement('input', { onFocus: props.activateSearch, type: 'text', value: '' })
             ),
             _react2.default.createElement(
                 'label',
                 null,
                 'End Year',
-                _react2.default.createElement('input', { onFocus: props.activateSearch, type: 'text', name: 'endYear', value: '' })
+                _react2.default.createElement('input', { onFocus: props.activateSearch, type: 'text', value: '' })
             ),
             _react2.default.createElement('input', { type: 'submit', value: 'Search' })
         );
@@ -22712,19 +22815,19 @@ function Search(props) {
                 'label',
                 null,
                 'Topic',
-                _react2.default.createElement('input', { type: 'text', name: 'topic' })
+                _react2.default.createElement('input', { type: 'text', name: 'q' })
             ),
             _react2.default.createElement(
                 'label',
                 null,
                 'Start Year',
-                _react2.default.createElement('input', { type: 'text', name: 'startYear' })
+                _react2.default.createElement('input', { type: 'text', name: 'begin_date' })
             ),
             _react2.default.createElement(
                 'label',
                 null,
                 'End Year',
-                _react2.default.createElement('input', { type: 'text', name: 'endYear' })
+                _react2.default.createElement('input', { type: 'text', name: 'end_date' })
             ),
             _react2.default.createElement('input', { type: 'submit', value: 'Search' })
         );
@@ -22733,19 +22836,11 @@ function Search(props) {
         'div',
         { style: style.container },
         _react2.default.createElement(
-            'div',
-            null,
-            _react2.default.createElement(
-                'h3',
-                null,
-                'Search'
-            )
+            'h3',
+            { style: style.title },
+            'Search'
         ),
-        _react2.default.createElement(
-            'div',
-            null,
-            form
-        )
+        form
     );
 }
 
@@ -22797,18 +22892,19 @@ function Results(props) {
             { style: style.heading },
             'Results'
         ),
-        props.articles.map(function (article) {
+        props.articles.map(function (article, i) {
+            console.log(article);
             return _react2.default.createElement(
                 'div',
-                { style: style.item },
+                { key: i, style: style.item },
                 _react2.default.createElement(
                     'span',
                     null,
-                    article
+                    article.title
                 ),
                 _react2.default.createElement(
                     'button',
-                    null,
+                    { onClick: props.saveArticle(article) },
                     'Save'
                 )
             );
@@ -22843,6 +22939,73 @@ function Footer(props) {
 }
 
 exports.default = Footer;
+
+/***/ }),
+/* 190 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _react = __webpack_require__(14);
+
+var _react2 = _interopRequireDefault(_react);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function Saved(props) {
+    var style = {
+        container: {
+            display: 'grid',
+            gridTemplateColumns: '1fr',
+            border: '2px solid black',
+            gridGap: '20px',
+            padding: '20px 10px'
+        },
+        heading: {
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center'
+        },
+        item: {
+            display: 'flex',
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            border: '2px solid black'
+        }
+    };
+    return _react2.default.createElement(
+        'div',
+        { style: style.container },
+        _react2.default.createElement(
+            'h3',
+            { style: style.heading },
+            'Saved'
+        ),
+        props.savedArticles.map(function (article) {
+            return _react2.default.createElement(
+                'div',
+                { key: article._id, style: style.item },
+                _react2.default.createElement(
+                    'span',
+                    null,
+                    article.title
+                ),
+                _react2.default.createElement(
+                    'button',
+                    { onClick: props.deleteSavedArticle(article._id) },
+                    'Delete'
+                )
+            );
+        })
+    );
+}
+
+exports.default = Saved;
 
 /***/ })
 /******/ ]);

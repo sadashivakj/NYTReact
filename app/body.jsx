@@ -1,6 +1,7 @@
 import React from 'react'
 import Search from './search.jsx'
 import Results from './results.jsx'
+import Saved from './saved.jsx'
 
 function Body (props) {
     var style = {
@@ -19,8 +20,14 @@ function Body (props) {
                 searchActive={props.searchActive}
                 activateSearch={props.activateSearch}
             />
-            <Results articles={props.articles}/>
-
+            <Results 
+                articles={props.articles}
+                saveArticle={props.saveArticle}
+            />
+            <Saved 
+                savedArticles={props.savedArticles}
+                deleteSavedArticle={props.deleteSavedArticle}
+            />
         </div>
     )
 }

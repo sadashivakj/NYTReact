@@ -1,6 +1,6 @@
 import React from 'react'
 
-function Results (props) {
+function Saved (props) {
     var style = {
         container: {
             display: 'grid',
@@ -23,19 +23,17 @@ function Results (props) {
     }
     return (
         <div style={style.container}>
-            <h3 style={style.heading}>Results</h3>
-            {props.articles.map(function(article, i) {
-                console.log(article)
+            <h3 style={style.heading}>Saved</h3>
+            {props.savedArticles.map(function(article) {
                 return (
-                    <div key={i} style={style.item}>
+                    <div key={article._id} style={style.item}>
                         <span>{article.title}</span>
-                        <button onClick={props.saveArticle(article)}>Save</button>
+                        <button onClick={props.deleteSavedArticle(article._id)}>Delete</button>
                     </div>
                 )
             })}
         </div>
-
     )
 }
 
-export default Results
+export default Saved
